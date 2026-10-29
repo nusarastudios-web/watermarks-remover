@@ -32,7 +32,7 @@ a{color:#1a73e8}
 <p id="result"></p>
 <pre id="report" style="display:none"></pre>
 </div>
-<p class="small">Hanya untuk file milik sendiri. Tanda yang kelihatan (logo/tulisan yang menempel di video atau gambar) tidak dihapus alat ini.</p>
+<p class="small">Hanya untuk file milik sendiri. Tanda yang kelihatan (logo/tulisan yang menempel di video atau gambar) tidak dihapus alat ini. File teks: tombol Periksa jalan, tombol Bersihkan butuh mesin tulis-ulang (belum dipasang di versi gratis ini).</p>
 <script>
 const $ = id => document.getElementById(id);
 let file = null, b64 = "";
@@ -90,7 +90,11 @@ $("btnClean").addEventListener("click", async () => {
     if (a.download === file.name) a.download = file.name + ".bersih";
     a.click();
     showReport("Selesai — file bersih sudah diunduh. Laporan:", data.report || data);
-  } catch (e) { $("result").textContent = "Gagal membersihkan: " + e.message; }
+  } catch (e) {
+    let msg = e.message;
+    if (msg.includes("Layer B")) msg = "File teks membutuhkan mesin tulis-ulang (Layer B) yang belum dipasang di server gratis ini. Gunakan tombol Periksa untuk melihat temuannya; pembersihan teks penuh menyusul tahap berikutnya.";
+    $("result").textContent = "Gagal membersihkan: " + msg;
+  }
 });
 </script>
 </body>
