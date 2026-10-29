@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pembersih Tanda AI</title>
+<style>
+body{font-family:system-ui,-apple-system,sans-serif;max-width:720px;margin:0 auto;padding:24px 16px;color:#222}
+h1{font-size:24px;margin-bottom:4px}
+p{line-height:1.5}
+.card{border:1px solid #ddd;border-radius:12px;padding:16px;margin:16px 0}
+button{padding:10px 18px;border:0;border-radius:8px;background:#1a73e8;color:#fff;font-size:15px;cursor:pointer;margin-right:8px}
+button:disabled{opacity:.5;cursor:default}
+button.secondary{background:#eee;color:#222}
+pre{background:#f6f6f6;border-radius:8px;padding:12px;white-space:pre-wrap;word-break:break-word;font-size:13px;max-height:320px;overflow:auto}
+#status{margin:12px 0;color:#555}
+a{color:#1a73e8}
+.small{font-size:13px;color:#666}
+</style>
+</head>
+<body>
+<h1>Pembersih Tanda AI</h1>
+<p>Hapus tanda AI yang tersembunyi (metadata C2PA/EXIF/XMP dan karakter tak terlihat) dari file milik sendiri. File diproses di server ini saja, tidak dikirim ke pihak ketiga.</p>
+<p id="status">Memeriksa status server…</p>
+<div class="card">
+<input type="file" id="fileInput">
+<p class="small">Disarankan file di bawah 50 MB (server gratis). File di atas 150 MB ditolak halaman ini.</p>
+<p>
+<button id="btnInspect" class="secondary" disabled>Periksa dulu</button>
+<button id="btnClean" disabled>Bersihkan &amp; Unduh</button>
+</p>
+<p id="result"></p>
+<pre id="report" style="display:none"></pre>
+</div>
+<p class="small">Hanya untuk file milik sendiri. Tanda yang kelihatan (logo/tulisan yang menempel di video atau gambar) tidak dihapus alat ini.</p>
+<script>
+const $ = id => document.getElementById(id);
+let file = null, b64 = "";
+fetch("/health").then(r => r.json()).then(j => {
+  $("status").textContent = j.ok ? "Status server: menyala." : "Status server: tidak ok.";
+}).catch(() => { $("status").textContent = "Status server: tidak dapat dihubungi."; });
+$("fileInput").addEventListener("change", () => {
+  file = $("fileInput").files[0];
+  $("result").textContent = ""; $("report").style.display = "none";
+  if (!file) { $("btnInspect").disabled = true; $("btnClean").disabled = true; return; }
+  if (file.size > 150 * 1024 * 1024) {
+    $("result").textContent = "File terlalu besar (di atas 150 MB).";
+    $("btnInspect").disabled = true; $("btnClean").disabled = true; return;
+  }
+  if (file.size > 50 * 1024 * 1024) {
+    $("result").textContent = "Peringatan: file di atas 50 MB, proses bisa lambat atau gagal di server gratis.";
+  }
+  const rd = new FileReader();
+  rd.onload = () => {
+    b64 = rd.result.split(",", 2)[1] || "";
+    $("btnInspect").disabled = false; $("btnClean").disabled = false;
+  };
+  rd.readAsDataURL(file);
+});
+async function callApi(path) {
+  const res = await fetch(path, {method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({file: b64, name: file.name})});
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data && data.error) || ("Server menjawab " + res.status));
+  return data;
+}
+function showReport(title, data) {
+  $("result").textContent = title;
+  $("report").textContent = JSON.stringify(data, null, 2);
+  $("report").style.display = "block";
+}
+$("btnInspect").addEventListener("click", async () => {
+  $("result").textContent = "Memeriksa…";
+  try { showReport("Hasil pemeriksaan:", await callApi("/inspect")); }
+  catch (e) { $("result").textContent = "Gagal memeriksa: " + e.message; }
+});
+$("btnClean").addEventListener("click", async () => {
+  $("result").textContent = "Membersihkan…";
+  try {
+    const data = await callApi("/clean");
+    if (!data.cleaned) throw new Error("Server tidak mengembalikan file bersih.");
+    const bin = atob(data.cleaned);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes]);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = file.name.replace(/(\.[^.]+)$/, ".bersih$1");
+    if (a.download === file.name) a.download = file.name + ".bersih";
+    a.click();
+    showReport("Selesai — file bersih sudah diunduh. Laporan:", data.report || data);
+  } catch (e) { $("result").textContent = "Gagal membersihkan: " + e.message; }
+});
+</script>
+</body>
+</html>
