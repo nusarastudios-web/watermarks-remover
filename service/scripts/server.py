@@ -1453,7 +1453,22 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authorized():
             self._respond(HTTPStatus.UNAUTHORIZED, {"ok": False, "error": "unauthorized"})
             return
-        if path == "/health":
+                if path in ("/", "/ui.html"):            
+                    try:
+                        data = Path(__file__).with_name("ui.html").read_bytes()
+                    except OSError:
+                        self._respond(HTTPStatus.NOT_FOUND, {"ok": False, "error": "not found"})
+                        return
+                    self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+            return
+        
+
+                        if path == "/health":
             self._respond(HTTPStatus.OK, {"ok": True, "version": VERSION})
         elif path == "/capabilities":
             self._respond(HTTPStatus.OK, {"ok": True, **capabilities()})
