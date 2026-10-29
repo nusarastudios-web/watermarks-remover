@@ -72,5 +72,5 @@ ENV WATERMARKS_SERVER_VERSION=${VERSION} \
 
 WORKDIR /app
 EXPOSE 8765
-ENTRYPOINT ["python3"]
-CMD ["/app/scripts/server.py", "--host", "0.0.0.0"]
+ENTRYPOINT []
+CMD ["sh", "-c", "python3 /app/scripts/server.py --host 0.0.0.0 --port ${PORT:-8765}"]
